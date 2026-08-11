@@ -76,6 +76,20 @@ const decompressWasm = async (ptrFn, lenFn) => {
     writer.close();
     return await new Response(ds.readable).text();
 };
+const resolveIPLIST = async (raw) => {
+    if (!raw || !raw.trim()) return;
+    const s = raw.trim();
+    if (s.startsWith('http')) {
+        try {
+            const resp = await fetch(s).then(r => r.text());
+            ipListAll = resp.split(/[,\n]/).map(x => x.trim()).filter(Boolean);
+        } catch(e) {}
+    } else if (s.startsWith('[')) {
+        try { ipListAll = JSON.parse(s); } catch(e) {}
+    } else {
+        ipListAll = s.split(/[,\n]/).map(x => x.trim()).filter(Boolean);
+    }
+};
 const getEnv = (env) => {
     if (config) return config;
     config = {
@@ -85,10 +99,6 @@ const getEnv = (env) => {
         pass: (env.S5HTTPPASS || socks5AndHttpPass).trim(),
         sspass: (env.SSPASS || ssAeadPassword).trim()
     };
-    // 新增：优先读环境变量 IPLIST（JSON数组），没有则用默认值
-    if (env.IPLIST) {
-        try { ipListAll = JSON.parse(env.IPLIST); } catch {}
-    }
     return config;
 };
 const initializeWasm = (env) => {
@@ -2402,8 +2412,10 @@ export default {
         }
         const url = new URL(request.url);
         const {uuid, password, user, pass, sspass} = getEnv(env);
+        if (env.IPLIST) await resolveIPLIST(env.IPLIST);
         if (url.pathname === '/sub') return await getSub(request, url, uuid);
         if (url.pathname === `/${uuid}` || url.pathname === `/${password}`) {
+            if (env.IPLIST && !rawHtml) await resolveIPLIST(env.IPLIST);
             if (!rawHtml) {
                 rawHtml = await decompressWasm(getPanelHtmlPtr, getPanelHtmlLen);
                 const map = {UUID: uuid, PASS: password, HTTPPASS: `${user}:${pass}`, SSPASS: sspass, IPLIST: JSON.stringify(ipListAll), ECHDNS: encodeURIComponent(sharedEchDns)};
