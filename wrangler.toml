@@ -15,7 +15,7 @@ SSPASS = "1987119"
 S5HTTPUSER = "wobe"
 # S5和HTTP入站验证密码
 S5HTTPPASS = "1987119"
-IPLIST = IPLIST_KV
+IPLIST = "IPLIST_KV"
 
 [[kv_namespaces]]
 binding = "IPLIST_KV"
