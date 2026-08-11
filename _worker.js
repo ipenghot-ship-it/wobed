@@ -76,7 +76,7 @@ const decompressWasm = async (ptrFn, lenFn) => {
     writer.close();
     return await new Response(ds.readable).text();
 };
-const resolveIPLIST = (raw, env) => {
+const resolveIPLIST = async (raw, env) => {
     if (!raw || !raw.trim()) return;
     const s = raw.trim();
     // KV binding: name starts with a letter, not http/[
@@ -84,7 +84,7 @@ const resolveIPLIST = (raw, env) => {
         const binding = env[s];
         if (binding && typeof binding.get === 'function') {
             try {
-                ipListAll = binding.get('iplist')
+                ipListAll = (await binding.get('iplist'))
                     .split(/[,\n]/).map(x => x.trim()).filter(Boolean);
                 return;
             } catch(e) {}
@@ -2424,10 +2424,10 @@ export default {
         }
         const url = new URL(request.url);
         const {uuid, password, user, pass, sspass} = getEnv(env);
-        if (env.IPLIST) resolveIPLIST(env.IPLIST, env);
+        if (env.IPLIST) await resolveIPLIST(env.IPLIST, env);
         if (url.pathname === '/sub') return await getSub(request, url, uuid);
         if (url.pathname === `/${uuid}` || url.pathname === `/${password}`) {
-            if (env.IPLIST && !rawHtml) resolveIPLIST(env.IPLIST, env);
+            if (env.IPLIST && !rawHtml) await resolveIPLIST(env.IPLIST, env);
             if (!rawHtml) {
                 rawHtml = await decompressWasm(getPanelHtmlPtr, getPanelHtmlLen);
                 const map = {UUID: uuid, PASS: password, HTTPPASS: `${user}:${pass}`, SSPASS: sspass, IPLIST: JSON.stringify(ipListAll), ECHDNS: encodeURIComponent(sharedEchDns)};
